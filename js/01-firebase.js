@@ -280,7 +280,15 @@ window.tokenIcon = (size) => { const s = size || 20; return `<img src="${IMG.tok
 window.caseIcon = (size) => { const s = size || 20; return `<img src="${IMG.case}" style="width:${s}px;height:${s}px;vertical-align:middle;image-rendering:pixelated;" onerror="this.outerHTML='🎁'">`; };
 window.avatarHTML = (name, userData, size) => {
     const s = size || 44;
-    const img = userData && userData.avatarUrl;
+    let img = userData && userData.avatarUrl;
+    
+    // 🟢 Если это пресет (например, preset:gold_cat), подставляем нужную картинку
+    if (img && img.startsWith('preset:')) {
+        const presetName = img.split(':')[1];
+        if (presetName === 'gold_cat') img = 'gold_cat.png'; // Имя твоего файла с котиком
+        else if (presetName === 'default') img = null;
+    }
+
     if (img) return `<div class="avatar" style="width:${s}px;height:${s}px;"><img src="${img}" class="avatar-img" onerror="this.outerHTML='${name.charAt(0).toUpperCase()}'"></div>`;
     return `<div class="avatar" style="width:${s}px;height:${s}px;">${name.charAt(0).toUpperCase()}</div>`;
 };
