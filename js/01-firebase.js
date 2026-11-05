@@ -282,14 +282,16 @@ window.avatarHTML = (name, userData, size) => {
     const s = size || 44;
     let img = userData && userData.avatarUrl;
     
-    // 🟢 Если это пресет (например, preset:gold_cat), подставляем нужную картинку
-    if (img && img.startsWith('preset:')) {
+    // 🟢 Если это пресет (например, preset:gold_cat)
+    if (img && typeof img === 'string' && img.startsWith('preset:')) {
         const presetName = img.split(':')[1];
-        if (presetName === 'gold_cat') img = 'gold_cat.png'; // Имя твоего файла с котиком
+        if (presetName === 'gold_cat') img = 'gold_cat.png'; 
         else if (presetName === 'default') img = null;
     }
 
-    if (img) return `<div class="avatar" style="width:${s}px;height:${s}px;"><img src="${img}" class="avatar-img" onerror="this.outerHTML='${name.charAt(0).toUpperCase()}'"></div>`;
+    if (img) {
+        return `<div class="avatar" style="width:${s}px;height:${s}px;"><img src="${img}" class="avatar-img" onerror="this.style.display='none'; this.parentNode.innerHTML='${name.charAt(0).toUpperCase()}'"></div>`;
+    }
     return `<div class="avatar" style="width:${s}px;height:${s}px;">${name.charAt(0).toUpperCase()}</div>`;
 };
 window.nickHTML = (name, userData) => {
