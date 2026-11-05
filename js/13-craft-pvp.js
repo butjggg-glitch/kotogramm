@@ -230,23 +230,41 @@ window.buyPickaxe = function(key) {
 
 window.randomEnchant = function() {
     if (currentUser.coins !== Infinity && currentUser.coins < 500) return toast('❌ Нужно 500🐾');
-    const isSpeed = Math.random() < 0.5;
-    const enchKey = isSpeed ? 'speed' : 'luck';
-    const amount = isSpeed ? 1 : 5;
-    db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants/' + enchKey).transaction(c => (c || 0) + amount).then(() => {
-        if (currentUser.coins !== Infinity) db.ref('users/' + currentUser.username + '/coins').set(currentUser.coins - 500);
-        toast(`🎲 Выпало: ${isSpeed ? '⚡ Скорость' : '🍀 Удача'} +${amount}!`);
-        rCraft();
+    
+    db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants').once('value').then(s => {
+        const ench = s.val() || { speed: 0, luck: 0 };
+        if (ench.luck >= 50 && ench.speed >= 50) return toast('🛑 Достигнут максимум (+50% удачи и +50% скорости)!');
+
+        const isSpeed = Math.random() < 0.5;
+        const enchKey = isSpeed ? 'speed' : 'luck';
+        const amount = isSpeed ? 1 : 5;
+
+        // Проверка лимита
+        if (ench[enchKey] + amount > 50) return toast(`🛑 Максимум для этого зачарования — 50!`);
+
+        db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants/' + enchKey).transaction(c => (c || 0) + amount).then(() => {
+            if (currentUser.coins !== Infinity) db.ref('users/' + currentUser.username + '/coins').set(currentUser.coins - 500);
+            toast(`🎲 Выпало: ${isSpeed ? '⚡ Скорость' : '🍀 Удача'} +${amount}!`);
+            rCraft();
+        });
     });
 };
 
 window.buyEnchant = function(type) {
     if (currentUser.coins !== Infinity && currentUser.coins < 2000) return toast('❌ Нужно 2000🐾');
-    const amount = type === 'speed' ? 1 : 5;
-    db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants/' + type).transaction(c => (c || 0) + amount).then(() => {
-        if (currentUser.coins !== Infinity) db.ref('users/' + currentUser.username + '/coins').set(currentUser.coins - 2000);
-        toast(`✅ Куплено: ${type === 'speed' ? '⚡ Скорость' : '🍀 Удача'}!`);
-        rCraft();
+    
+    db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants').once('value').then(s => {
+        const ench = s.val() || { speed: 0, luck: 0 };
+        const amount = type === 'speed' ? 1 : 5;
+
+        // Проверка лимита
+        if (ench[type] + amount > 50) return toast(`🛑 Максимум для этого зачарования — 50!`);
+
+        db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants/' + type).transaction(c => (c || 0) + amount).then(() => {
+            if (currentUser.coins !== Infinity) db.ref('users/' + currentUser.username + '/coins').set(currentUser.coins - 2000);
+            toast(`✅ Куплено: ${type === 'speed' ? '⚡ Скорость' : '🍀 Удача'}!`);
+            rCraft();
+        });
     });
 };
 
