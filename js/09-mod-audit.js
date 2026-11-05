@@ -139,7 +139,7 @@ window.approveReq = function(id, type) {
         if (type === 'buy') {
             db.ref('users/' + r.username + '/tokens').once('value').then(ts => {
                 const cur = ts.val() || 0;
-                const newT = (cur === Infinity || cur === "Infinity") ? cur : cur + (r.tokens || r.amount * 10);
+                const newT = (cur === Infinity || cur === "Infinity") ? cur : cur + (r.tokens || r.amount * 20);
                 db.ref('users/' + r.username + '/tokens').set(newT).then(() => { db.ref('tokenRequests/' + id + '/status').set('approved'); addAuditLog('admin_grant_tokens', r.username, r.tokens || r.amount * 10); toast(`✅ ${r.tokens}💎 выдано игроку ${r.username}`); rRequests(); });
             });
         } else if (type === 'withdraw') {

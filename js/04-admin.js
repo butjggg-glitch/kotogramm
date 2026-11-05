@@ -1,5 +1,5 @@
 // ============================================================
-// 04-admin.js — Админ-панель (60+ функций)
+// 04-admin.js — МЕГА-АДМИН-ПАНЕЛЬ (60+ функций)
 // ============================================================
 
 window.rAdminPanel = function() {
@@ -9,103 +9,95 @@ window.rAdminPanel = function() {
     }
     if (!isMasterKeyValid) {
         let h = '<div class="divider">⚙️ АДМИН-ПАНЕЛЬ</div>';
-        h += `<div class="card"><span class="text-bold">🔑 Мастер-ключ</span><p class="text-sm">Введите мастер-ключ один раз для доступа к админке.</p><input type="password" id="masterKeySetup" class="input-sm" placeholder="K0t0gr@mM@sterKey2024!" style="margin-top:6px; width:100%;"><button class="btn-sm btn-purple" onclick="window.saveMasterKey()" style="margin-top:6px; width:100%;">Сохранить</button></div>`;
+        h += `<div class="card"><span class="text-bold">🔑 Мастер-ключ</span><p class="text-sm">Введите мастер-ключ один раз.</p><input type="password" id="masterKeySetup" class="input-sm" placeholder="K0t0gr@mM@sterKey2024!" style="margin-top:6px; width:100%;"><button class="btn-sm btn-purple" onclick="window.saveMasterKey()" style="margin-top:6px; width:100%;">Сохранить</button></div>`;
         $('feedContainer').innerHTML = h;
         return;
     }
 
-    let h = '<div class="divider">⚙️ АДМИН-ПАНЕЛЬ</div>';
+    let h = '<div class="divider">⚙️ МЕГА-АДМИНКА</div>';
     h += `<div class="card" style="background:linear-gradient(135deg,#4f46e5,#7c3aed); color:white; text-align:center;"><div style="font-size:36px;">👑</div><div style="font-weight:900; font-size:18px; margin-top:4px;">Админ: ${esc(currentUser.username)}</div><div style="font-size:12px; opacity:0.9; margin-top:4px;">60+ функций управления</div></div>`;
 
-    // 1. КОЙНЫ (6 функций)
-    h += '<div class="admin-section">💰 Койны</div><div class="admin-grid">';
-    h += `<div class="admin-action" onclick="window.admCoins('add')"><div class="admin-action-icon">➕</div><div class="admin-action-name">Выдать</div></div>`;
-    h += `<div class="admin-action" onclick="window.admCoins('remove')"><div class="admin-action-icon">➖</div><div class="admin-action-name">Списать</div></div>`;
-    h += `<div class="admin-action" onclick="window.admCoins('set')"><div class="admin-action-icon">📝</div><div class="admin-action-name">Установить</div></div>`;
-    h += `<div class="admin-action" onclick="window.admCoins('zero')"><div class="admin-action-icon">0️⃣</div><div class="admin-action-name">Обнулить</div></div>`;
-    h += `<div class="admin-action" onclick="window.admCoins('x2all')"><div class="admin-action-icon">⚡</div><div class="admin-action-name">×2 всем</div></div>`;
-    h += `<div class="admin-action" onclick="window.admCoins('resetAll')"><div class="admin-action-icon">🔄</div><div class="admin-action-name">Сброс всем</div></div>`;
+    // 1. ЭКОНОМИКА (Койны и Токены)
+    h += '<div class="admin-section">💰 ЭКОНОМИКА</div><div class="admin-grid">';
+    h += `<div class="admin-action" onclick="window.admCoins('add')"><div class="admin-action-icon">➕</div><div class="admin-action-name">Выдать Койны</div></div>`;
+    h += `<div class="admin-action" onclick="window.admCoins('remove')"><div class="admin-action-icon">➖</div><div class="admin-action-name">Списать Койны</div></div>`;
+    h += `<div class="admin-action" onclick="window.admCoins('set')"><div class="admin-action-icon">📝</div><div class="admin-action-name">Установить Койны</div></div>`;
+    h += `<div class="admin-action" onclick="window.admTokens('add')"><div class="admin-action-icon">💎</div><div class="admin-action-name">Выдать Токены</div></div>`;
+    h += `<div class="admin-action" onclick="window.admTokens('remove')"><div class="admin-action-icon">💎</div><div class="admin-action-name">Списать Токены</div></div>`;
+    h += `<div class="admin-action" onclick="window.admCoins('x2all')"><div class="admin-action-icon">⚡</div><div class="admin-action-name">×2 Всем</div></div>`;
+    h += `<div class="admin-action" onclick="window.admCoins('resetAll')"><div class="admin-action-icon">🔄</div><div class="admin-action-name">Сброс Экономики</div></div>`;
+    h += `<div class="admin-action" onclick="window.admRes('add')"><div class="admin-action-icon">🪵</div><div class="admin-action-name">Выдать Ресурсы</div></div>`;
     h += '</div>';
 
-    // 2. ТОКЕНЫ (4 функции)
-    h += '<div class="admin-section">💎 Токены</div><div class="admin-grid">';
-    h += `<div class="admin-action" onclick="window.admTokens('add')"><div class="admin-action-icon">➕</div><div class="admin-action-name">Выдать</div></div>`;
-    h += `<div class="admin-action" onclick="window.admTokens('remove')"><div class="admin-action-icon">➖</div><div class="admin-action-name">Списать</div></div>`;
-    h += `<div class="admin-action" onclick="window.admTokens('set')"><div class="admin-action-icon">📝</div><div class="admin-action-name">Установить</div></div>`;
-    h += `<div class="admin-action" onclick="window.admTokens('zero')"><div class="admin-action-icon">0️⃣</div><div class="admin-action-name">Обнулить</div></div>`;
+    // 2. РОЛИ И СТАТУСЫ
+    h += '<div class="admin-section">🎭 РОЛИ</div><div class="admin-grid">';
+    h += `<div class="admin-action" onclick="window.admRole('give')"><div class="admin-action-icon">👑</div><div class="admin-action-name">Выдать Роль</div></div>`;
+    h += `<div class="admin-action" onclick="window.admRole('take')"><div class="admin-action-icon">🗑️</div><div class="admin-action-name">Снять Роль</div></div>`;
+    h += `<div class="admin-action" onclick="window.admRole('giveAll')"><div class="admin-action-icon">🎁</div><div class="admin-action-name">Всем Роль</div></div>`;
+    h += `<div class="admin-action" onclick="window.admRole('takeAll')"><div class="admin-action-icon">🚫</div><div class="admin-action-name">Снять у Всех</div></div>`;
     h += '</div>';
 
-    // 3. РОЛИ (4 функции)
-    h += '<div class="admin-section">🎭 Роли</div><div class="admin-grid">';
-    h += `<div class="admin-action" onclick="window.admRole('give')"><div class="admin-action-icon">👑</div><div class="admin-action-name">Выдать</div></div>`;
-    h += `<div class="admin-action" onclick="window.admRole('take')"><div class="admin-action-icon">🗑️</div><div class="admin-action-name">Снять</div></div>`;
-    h += `<div class="admin-action" onclick="window.admRole('giveAll')"><div class="admin-action-icon">🎁</div><div class="admin-action-name">Всем выдать</div></div>`;
-    h += `<div class="admin-action" onclick="window.admRole('takeAll')"><div class="admin-action-icon">🚫</div><div class="admin-action-name">У всех снять</div></div>`;
-    h += '</div>';
-
-    // 4. БАНЫ И МУТЫ (6 функций)
-    h += '<div class="admin-section">🚫 Баны и Муты</div><div class="admin-grid">';
+    // 3. БАНЫ И МУТЫ
+    h += '<div class="admin-section">🚫 БАНЫ И МУТЫ</div><div class="admin-grid">';
     h += `<div class="admin-action" onclick="window.admBan('ban')"><div class="admin-action-icon">🔨</div><div class="admin-action-name">Забанить</div></div>`;
     h += `<div class="admin-action" onclick="window.admBan('unban')"><div class="admin-action-icon">🔓</div><div class="admin-action-name">Разбанить</div></div>`;
-    h += `<div class="admin-action" onclick="window.admBan('banAll')"><div class="admin-action-icon">🚨</div><div class="admin-action-name">Бан всех</div></div>`;
+    h += `<div class="admin-action" onclick="window.admBan('banAll')"><div class="admin-action-icon">🚨</div><div class="admin-action-name">Бан Всех</div></div>`;
     h += `<div class="admin-action" onclick="window.admMute('mute')"><div class="admin-action-icon">🔇</div><div class="admin-action-name">Замутить</div></div>`;
     h += `<div class="admin-action" onclick="window.admMute('unmute')"><div class="admin-action-icon">🔊</div><div class="admin-action-name">Размутить</div></div>`;
-    h += `<div class="admin-action" onclick="window.admMute('muteAll')"><div class="admin-action-icon">📢</div><div class="admin-action-name">Мут всем</div></div>`;
+    h += `<div class="admin-action" onclick="window.admMute('muteAll')"><div class="admin-action-icon">📢</div><div class="admin-action-name">Мут Всем</div></div>`;
     h += '</div>';
 
-    // 5. ЭКОНОМИКА И КЕЙСЫ (5 функций)
-    h += '<div class="admin-section">🎁 Кейсы и Экономика</div><div class="admin-grid">';
-    h += `<div class="admin-action" onclick="window.admCase('giveAll')"><div class="admin-action-icon">🎁</div><div class="admin-action-name">Выдать кейсы</div></div>`;
-    h += `<div class="admin-action" onclick="window.admCase('freeAll')"><div class="admin-action-icon">🆓</div><div class="admin-action-name">Бесплатно всем</div></div>`;
-    h += `<div class="admin-action" onclick="window.admCase('openAll')"><div class="admin-action-icon">📦</div><div class="admin-action-name">Открыть всем</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('orders')"><div class="admin-action-icon">📦</div><div class="admin-action-name">Очистить заказы</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('auction')"><div class="admin-action-icon">⚖️</div><div class="admin-action-name">Сброс аукциона</div></div>`;
+    // 4. ИВЕНТЫ И КЕЙСЫ
+    h += '<div class="admin-section">🎉 ИВЕНТЫ И КЕЙСЫ</div><div class="admin-grid">';
+    h += `<div class="admin-action" onclick="window.admEvent('start')"><div class="admin-action-icon">🚀</div><div class="admin-action-name">Запустить Ивент</div></div>`;
+    h += `<div class="admin-action" onclick="window.admEvent('stop')"><div class="admin-action-icon">⏹️</div><div class="admin-action-name">Стоп Ивент</div></div>`;
+    h += `<div class="admin-action" onclick="window.admEvent('clear')"><div class="admin-action-icon">🗑️</div><div class="admin-action-name">Очистить Ивент</div></div>`;
+    h += `<div class="admin-action" onclick="window.admCase('giveAll')"><div class="admin-action-icon">🎁</div><div class="admin-action-name">Кейсы Всем</div></div>`;
+    h += `<div class="admin-action" onclick="window.admCase('freeAll')"><div class="admin-action-icon">🆓</div><div class="admin-action-name">Бесплатные Кейсы</div></div>`;
+    h += `<div class="admin-action" onclick="window.admCase('openAll')"><div class="admin-action-icon">📦</div><div class="admin-action-name">Открыть Всем</div></div>`;
     h += '</div>';
 
-    // 6. ИВЕНТЫ И ТУРНИРЫ (4 функции)
-    h += '<div class="admin-section">🎉 Ивенты и Турниры</div><div class="admin-grid">';
-    h += `<div class="admin-action" onclick="window.admEvent('start')"><div class="admin-action-icon">🚀</div><div class="admin-action-name">Запустить ивент</div></div>`;
-    h += `<div class="admin-action" onclick="window.admEvent('stop')"><div class="admin-action-icon">⏹️</div><div class="admin-action-name">Остановить ивент</div></div>`;
-    h += `<div class="admin-action" onclick="window.admEvent('clear')"><div class="admin-action-icon">🗑️</div><div class="admin-action-name">Очистить ивент</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('tournaments')"><div class="admin-action-icon">🏆</div><div class="admin-action-name">Очистить турниры</div></div>`;
+    // 5. КЛАНЫ И ТУРНИРЫ
+    h += '<div class="admin-section">🏰 КЛАНЫ И ТУРНИРЫ</div><div class="admin-grid">';
+    h += `<div class="admin-action" onclick="window.admClan('disbandAll')"><div class="admin-action-icon">💥</div><div class="admin-action-name">Распустить Кланы</div></div>`;
+    h += `<div class="admin-action" onclick="window.admClan('resetBank')"><div class="admin-action-icon">🏦</div><div class="admin-action-name">Сброс Банков</div></div>`;
+    h += `<div class="admin-action" onclick="window.admClan('clear')"><div class="admin-action-icon">🗑️</div><div class="admin-action-name">Удалить Кланы</div></div>`;
+    h += `<div class="admin-action" onclick="window.admClear('tournaments')"><div class="admin-action-icon">🏆</div><div class="admin-action-name">Очистить Турниры</div></div>`;
     h += '</div>';
 
-    // 7. КЛАНЫ (3 функции)
-    h += '<div class="admin-section">🏰 Кланы</div><div class="admin-grid">';
-    h += `<div class="admin-action" onclick="window.admClan('disbandAll')"><div class="admin-action-icon">💥</div><div class="admin-action-name">Распустить все</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClan('resetBank')"><div class="admin-action-icon">🏦</div><div class="admin-action-name">Сброс банков</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClan('clear')"><div class="admin-action-icon">🗑️</div><div class="admin-action-name">Удалить кланы</div></div>`;
+    // 6. ЧАТ И ЛС
+    h += '<div class="admin-section">💬 ЧАТ И ЛС</div><div class="admin-grid">';
+    h += `<div class="admin-action" onclick="window.admClear('chat')"><div class="admin-action-icon">💬</div><div class="admin-action-name">Очистить Чат</div></div>`;
+    h += `<div class="admin-action" onclick="window.admClear('private')"><div class="admin-action-icon">📩</div><div class="admin-action-name">Очистить ЛС</div></div>`;
+    h += `<div class="admin-action" onclick="window.admChatLock()"><div class="admin-action-icon">🔒</div><div class="admin-action-name">Блокировать Чат</div></div>`;
     h += '</div>';
 
-    // 8. ТЕХ. РАБОТЫ (3 функции)
-    h += '<div class="admin-section">🛠️ Тех. работы</div><div class="admin-grid">';
+    // 7. ТЕХ. РАБОТЫ
+    h += '<div class="admin-section">🛠️ ТЕХ. РАБОТЫ</div><div class="admin-grid">';
     h += `<div class="admin-action" onclick="window.admMaint('on')"><div class="admin-action-icon">🛠️</div><div class="admin-action-name">Включить</div></div>`;
     h += `<div class="admin-action" onclick="window.admMaint('off')"><div class="admin-action-icon">✅</div><div class="admin-action-name">Выключить</div></div>`;
-    h += `<div class="admin-action" onclick="window.admMaint('quick')"><div class="admin-action-icon">⚡</div><div class="admin-action-name">На 5 минут</div></div>`;
+    h += `<div class="admin-action" onclick="window.admMaint('quick')"><div class="admin-action-icon">⚡</div><div class="admin-action-name">На 5 Минут</div></div>`;
     h += '</div>';
 
-    // 9. ОЧИСТКА И СБРОСЫ (8 функций)
-    h += '<div class="admin-section">🗑️ Очистка и Сбросы</div><div class="admin-grid">';
-    h += `<div class="admin-action" onclick="window.admClear('chat')"><div class="admin-action-icon">💬</div><div class="admin-action-name">Чат</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('audit')"><div class="admin-action-icon">📋</div><div class="admin-action-name">Аудит</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('requests')"><div class="admin-action-icon">📋</div><div class="admin-action-name">Заявки</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('private')"><div class="admin-action-icon">📩</div><div class="admin-action-name">ЛС</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('craftAuction')"><div class="admin-action-icon">⚖️</div><div class="admin-action-name">Аукцион крафта</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('pvp_queue')"><div class="admin-action-icon">⚔️</div><div class="admin-action-name">Очередь PvP</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('active_battles')"><div class="admin-action-icon">💥</div><div class="admin-action-name">Бои PvP</div></div>`;
-    h += `<div class="admin-action" onclick="window.admClear('all')"><div class="admin-action-icon">🔥</div><div class="admin-action-name">Всё сразу</div></div>`;
+    // 8. ОЧИСТКА И СБРОСЫ
+    h += '<div class="admin-section">🗑️ ОЧИСТКА</div><div class="admin-grid">';
+    h += `<div class="admin-action" onclick="window.admClear('audit')"><div class="admin-action-icon">📋</div><div class="admin-action-name">Очистить Аудит</div></div>`;
+    h += `<div class="admin-action" onclick="window.admClear('requests')"><div class="admin-action-icon">📋</div><div class="admin-action-name">Очистить Заявки</div></div>`;
+    h += `<div class="admin-action" onclick="window.admClear('craftAuction')"><div class="admin-action-icon">⚖️</div><div class="admin-action-name">Очистить Аукцион</div></div>`;
+    h += `<div class="admin-action" onclick="window.admClear('all')"><div class="admin-action-icon">🔥</div><div class="admin-action-name">Сброс ВСЕГО</div></div>`;
     h += '</div>';
 
-    // 10. ПРОЧЕЕ (5 функций)
-    h += '<div class="admin-section">⚙️ Прочее</div><div class="admin-grid">';
-    h += `<div class="admin-action" onclick="window.admWipe('run')"><div class="admin-action-icon">🚨</div><div class="admin-action-name">Запустить вайп</div></div>`;
-    h += `<div class="admin-action" onclick="window.admWipe('reset')"><div class="admin-action-icon">🔄</div><div class="admin-action-name">Сброс вайпов</div></div>`;
-    h += `<div class="admin-action" onclick="window.admKey('reset')"><div class="admin-action-icon">🔑</div><div class="admin-action-name">Сброс ключа</div></div>`;
+    // 9. ПРОЧЕЕ И СТАТИСТИКА
+    h += '<div class="admin-section">⚙️ ПРОЧЕЕ</div><div class="admin-grid">';
+    h += `<div class="admin-action" onclick="window.admWipe('run')"><div class="admin-action-icon">🚨</div><div class="admin-action-name">Запустить Вайп</div></div>`;
+    h += `<div class="admin-action" onclick="window.admWipe('reset')"><div class="admin-action-icon">🔄</div><div class="admin-action-name">Сброс Вайпов</div></div>`;
+    h += `<div class="admin-action" onclick="window.admKey('reset')"><div class="admin-action-icon">🔑</div><div class="admin-action-name">Сброс Ключа</div></div>`;
     h += `<div class="admin-action" onclick="window.admView('suspicious')"><div class="admin-action-icon">🚨</div><div class="admin-action-name">Античит</div></div>`;
-    h += `<div class="admin-action" onclick="window.admStats()"><div class="admin-action-icon">📊</div><div class="admin-action-name">Статистика</div></div>`;
+    h += `<div class="admin-action" onclick="window.admView('audit')"><div class="admin-action-icon">📋</div><div class="admin-action-name">Аудит</div></div>`;
+    h += `<div class="admin-action" onclick="window.admPwdReset()"><div class="admin-action-icon">🔐</div><div class="admin-action-name">Сброс Пароля</div></div>`;
     h += '</div>';
 
-    h += '<div class="admin-section">📊 Статистика сервера</div>';
+    h += '<div class="admin-section">📊 СТАТИСТИКА СЕРВЕРА</div>';
     h += `<div class="card" id="admStatsCard"><div class="text-sm">Загрузка...</div></div>`;
 
     $('feedContainer').innerHTML = h;
@@ -124,7 +116,7 @@ window.rAdminPanel = function() {
     window.admStats();
 };
 
-// ============ ОСТАЛЬНЫЕ ФУНКЦИИ ============
+// ============ ФУНКЦИИ ============
 window.saveMasterKey = function() {
     const key = document.getElementById('masterKeySetup').value.trim();
     if (key === HARDCODED_MASTER_KEY) {
@@ -135,7 +127,7 @@ window.saveMasterKey = function() {
 };
 
 window.admCoins = function(op) {
-    const target = prompt('Ник игрока (или "all" для всех):');
+    const target = prompt('Ник игрока (или "all"):');
     if (!target) return;
     const amount = op === 'x2all' || op === 'resetAll' ? 0 : parseInt(prompt('Сумма:') || '0');
     db.ref('users').once('value').then(s => {
@@ -149,7 +141,6 @@ window.admCoins = function(op) {
                 else if (op === 'add') updates['users/' + n + '/coins'] = (x.coins || 0) + amount;
                 else if (op === 'remove') updates['users/' + n + '/coins'] = Math.max(0, (x.coins || 0) - amount);
                 else if (op === 'set') updates['users/' + n + '/coins'] = amount;
-                else if (op === 'zero') updates['users/' + n + '/coins'] = 0;
             });
         } else {
             if (!u[target]) return toast('❌ Нет такого игрока');
@@ -158,7 +149,6 @@ window.admCoins = function(op) {
             if (op === 'add') updates['users/' + target + '/coins'] = cur + amount;
             else if (op === 'remove') updates['users/' + target + '/coins'] = Math.max(0, cur - amount);
             else if (op === 'set') updates['users/' + target + '/coins'] = amount;
-            else if (op === 'zero') updates['users/' + target + '/coins'] = 0;
         }
         db.ref().update(updates).then(() => { toast('✅ Готово'); addAuditLog('admin_' + op + '_coins', target, amount); });
     });
@@ -178,8 +168,6 @@ window.admTokens = function(op) {
                 if (cur === Infinity) return;
                 if (op === 'add') updates['users/' + n + '/tokens'] = cur + amount;
                 else if (op === 'remove') updates['users/' + n + '/tokens'] = Math.max(0, cur - amount);
-                else if (op === 'set') updates['users/' + n + '/tokens'] = amount;
-                else if (op === 'zero') updates['users/' + n + '/tokens'] = 0;
             });
         } else {
             if (!u[target]) return toast('❌ Нет такого игрока');
@@ -187,10 +175,20 @@ window.admTokens = function(op) {
             if (cur === Infinity) return toast('Нельзя изменить ∞');
             if (op === 'add') updates['users/' + target + '/tokens'] = cur + amount;
             else if (op === 'remove') updates['users/' + target + '/tokens'] = Math.max(0, cur - amount);
-            else if (op === 'set') updates['users/' + target + '/tokens'] = amount;
-            else if (op === 'zero') updates['users/' + target + '/tokens'] = 0;
         }
         db.ref().update(updates).then(() => { toast('✅ Готово'); addAuditLog('admin_' + op + '_tokens', target, amount); });
+    });
+};
+
+window.admRes = function(op) {
+    const target = prompt('Ник игрока:');
+    if (!target) return;
+    const res = prompt('Ресурс (wood, stone, iron, gold, diamond):');
+    if (!res) return;
+    const amount = parseInt(prompt('Сумма:') || '0');
+    db.ref('users/' + target + '/inventory/' + res).transaction(c => (c || 0) + amount).then(() => {
+        toast(`✅ Выдано ${amount} ${res} → ${target}`);
+        addAuditLog('admin_add_res', target, amount);
     });
 };
 
@@ -284,15 +282,9 @@ window.admCase = function(op) {
 };
 
 window.admEvent = function(op) {
-    if (op === 'start') {
-        window.forceStartEvent();
-    } else if (op === 'stop') {
-        db.ref('events/active').update({ status: 'ended' }).then(() => toast('⏹️ Ивент остановлен'));
-    } else if (op === 'clear') {
-        db.ref('events/active').remove();
-        db.ref('events/lastEventTime').set(0);
-        toast('🗑️ Ивент очищен');
-    }
+    if (op === 'start') window.forceStartEvent();
+    else if (op === 'stop') db.ref('events/active').update({ status: 'ended' }).then(() => toast('⏹️ Ивент остановлен'));
+    else if (op === 'clear') { db.ref('events/active').remove(); db.ref('events/lastEventTime').set(0); toast('🗑️ Ивент очищен'); }
 };
 
 window.admClan = function(op) {
@@ -321,6 +313,24 @@ window.admMaint = function(op) {
     toast('🛠️ Режим обновлён');
 };
 
+window.admChatLock = function() {
+    db.ref('config/chatLocked').once('value').then(s => {
+        const cur = s.val() || false;
+        db.ref('config/chatLocked').set(!cur).then(() => toast(cur ? '🔓 Чат разблокирован' : '🔒 Чат заблокирован'));
+    });
+};
+
+window.admPwdReset = function() {
+    const target = prompt('Ник игрока для сброса пароля:');
+    if (!target) return;
+    const newPwd = prompt('Новый пароль (минимум 6 символов):');
+    if (!newPwd || newPwd.length < 6) return toast('❌ Пароль слишком короткий');
+    db.ref('users/' + target + '/password').set(newPwd).then(() => {
+        toast(`✅ Пароль ${target} изменён на ${newPwd}`);
+        addAuditLog('admin_pwd_reset', target, 0);
+    });
+};
+
 window.admClear = function(what) {
     if (what === 'all') {
         if (!confirm('ОЧИСТИТЬ ВСЁ?')) return;
@@ -336,7 +346,7 @@ window.admClear = function(what) {
     db.ref(map[what]).set(what === 'private' ? {} : []).then(() => toast('🗑️ Очищено'));
 };
 
-window.admView = function(what) { if (what === 'suspicious') switchTab('suspicious'); };
+window.admView = function(what) { if (what === 'suspicious') switchTab('suspicious'); else if (what === 'audit') switchTab('audit'); };
 window.admWipe = function(op) {
     if (op === 'run') { if (confirm('ЗАПУСТИТЬ ВАЙП?')) db.ref('config/wipeCount').once('value').then(s => runWipe(s.val() || 0)); }
     else if (op === 'reset') { db.ref('config/wipeCount').set(0).then(() => toast('🔄 Счётчик сброшен')); }

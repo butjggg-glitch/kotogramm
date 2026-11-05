@@ -1,5 +1,5 @@
 // ============================================================
-// 05-coins.js — Койны (главная) и Возможности ролей
+// 05-coins.js — Койны (главная), Возможности ролей и Подарки
 // ============================================================
 
 // ============ 🐾 rCoins ============
@@ -34,6 +34,16 @@ window.renderCoinsBody = function(banner, u) {
     const currentVip = getCurrentVipRole(me);
     let h = banner;
 
+    // 🎁 БЛОК ПОДАРКА НА 6 МЕСЯЦЕВ
+    if (!me.gift6Months) {
+        h += `<div class="card" style="background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; text-align: center; padding: 20px; margin-bottom: 10px; border: 3px solid #fff; box-shadow: 0 0 30px rgba(255,215,0,0.8);">
+            <div style="font-size: 40px;">🎂</div>
+            <div class="text-bold" style="font-size: 20px;">ПОДАРОК НА 6 МЕСЯЦЕВ!</div>
+            <div style="font-size: 14px; margin: 8px 0;">Забери 10 000 🐾 и особую аватарку «Золотой Кот»!</div>
+            <button class="btn btn-success" id="claimGift6" style="background: #000; color: #ffd700; font-size: 18px;">🎁 ЗАБРАТЬ ПОДАРОК</button>
+        </div>`;
+    }
+
     h += `<div class="row-between"><div class="row">${avatarHTML(currentUser.username, me, 44)}<div><div class="text-bold">${nickHTML(currentUser.username, me)}</div>`;
     if (currentUser.role==='admin') h+='<span class="badge badge-admin">АДМИН</span>';
     if (currentUser.role==='tester') h+='<span class="badge badge-tester">ТЕСТЕР</span>';
@@ -51,10 +61,18 @@ window.renderCoinsBody = function(banner, u) {
     if (originalAdmin) h += '<div style="margin:8px 0; font-size:12px; color:var(--text2);">🔑 Пароль: скрыто</div>';
     else h+=`<div style="margin:8px 0;"><span class="password-chip" onclick="window.cp('${ea(currentUser.password)}')">🔑 ${esc(currentUser.password)} 📋</span></div>`;
 
+    // 🖼️ АВАТАРКА
     const vipLevel = currentVip ? ROLES[currentVip].level : 0;
-    const canSetAvatar = currentUser.role === 'admin' || vipLevel >= 2 || me.canSetAvatar === true;
+    const canSetAvatar = currentUser.role === 'admin' || vipLevel >= 2 || me.canSetAvatar === true || me.gift6Months;
     h += '<div class="divider">🖼️ МОЯ АВАТАРКА</div>';
-    h += `<div class="card"><div class="text-sm" style="margin-bottom:8px;">${canSetAvatar ? 'Вставь ссылку на картинку' : '🔒 Купи «Свой аватар» в Токен-Шопе или получи Барона+'}</div><div class="row-wrap"><input class="input-sm" id="avatarUrlInput" placeholder="https://..." style="flex:1;" value="${me.avatarUrl ? esc(me.avatarUrl) : ''}" ${canSetAvatar ? '' : 'disabled'}><button class="btn-sm btn-blue" id="setAvatarBtn" ${canSetAvatar ? '' : 'disabled'}>🖼️ Установить</button>${me.avatarUrl ? '<button class="btn-sm btn-red" id="removeAvatarBtn">🗑️ Убрать</button>' : ''}</div></div>`;
+    h += `<div class="card"><div class="text-sm" style="margin-bottom:8px;">${canSetAvatar ? 'Выбери готовую или вставь ссылку' : '🔒 Купи «Свой аватар» в Токен-Шопе или получи Барона+'}</div>`;
+    if (canSetAvatar) {
+        h += `<div class="row-wrap" style="margin-bottom:8px;">
+            <button class="btn-sm btn-gold" onclick="window.setPresetAvatar('gold_cat')">👑 Золотой Кот (6 мес)</button>
+            <button class="btn-sm btn-purple" onclick="window.setPresetAvatar('default')">🎮 Стандартная</button>
+        </div>`;
+    }
+    h += `<div class="row-wrap"><input class="input-sm" id="avatarUrlInput" placeholder="https://..." style="flex:1;" value="${me.avatarUrl && !me.avatarUrl.startsWith('preset:') ? esc(me.avatarUrl) : ''}" ${canSetAvatar ? '' : 'disabled'}><button class="btn-sm btn-blue" id="setAvatarBtn" ${canSetAvatar ? '' : 'disabled'}>🖼️ Установить</button>${me.avatarUrl ? '<button class="btn-sm btn-red" id="removeAvatarBtn">🗑️ Убрать</button>' : ''}</div></div>`;
 
     h+=`<div class="card" style="margin-bottom:8px;"><div style="font-weight:700;font-size:13px;color:var(--accent);">🎁 Промокод</div><div class="row-wrap"><input class="input-sm" id="pi" placeholder="Код"><button class="btn-sm btn-purple" id="pa">Применить</button></div><div class="text-sm">KOTOSTART, BIGKOT, MEOW50, GOLDEN100, LUCKY777</div></div>`;
 
@@ -86,8 +104,29 @@ window.renderCoinsBody = function(banner, u) {
 
     $('feedContainer').innerHTML = h;
 
-    $('refreshCoins').onclick = () => rCoins();
+    // 🟢 ОБРАБОТЧИКИ ПОДАРКА
+    if ($('claimGift6')) {
+        $('claimGift6').onclick = () => {
+            db.ref('users/' + currentUser.username).once('value').then(s => {
+                const me2 = s.val();
+                if (me2.gift6Months) return toast('Вы уже забрали подарок!');
+                const updates = {};
+                updates['gift6Months'] = true;
+                if (me2.coins === Infinity || me2.coins === "Infinity") {
+                    // ничего
+                } else {
+                    updates['coins'] = (me2.coins || 0) + 10000;
+                }
+                updates['avatarUrl'] = 'preset:gold_cat';
+                db.ref('users/' + currentUser.username).update(updates).then(() => {
+                    toast('🎉 Подарок получен! +10 000🐾 и аватарка!');
+                    rCoins();
+                });
+            });
+        };
+    }
 
+    // Установка аватарки по ссылке
     if ($('setAvatarBtn')) $('setAvatarBtn').onclick = () => {
         const url = $('avatarUrlInput').value.trim();
         if (!url) { toast('Вставь ссылку'); return; }
@@ -123,6 +162,16 @@ window.renderCoinsBody = function(banner, u) {
     if ($('forceWipeBtn')) $('forceWipeBtn').onclick = () => {
         if (confirm('🚨 ЗАПУСТИТЬ ВАЙП?')) db.ref('config/wipeCount').once('value').then(s => runWipe(s.val() || 0));
     };
+
+    $('refreshCoins').onclick = () => rCoins();
+};
+
+// 🟢 ФУНКЦИЯ УСТАНОВКИ ПРЕСЕТОВ
+window.setPresetAvatar = function(preset) {
+    db.ref('users/' + currentUser.username + '/avatarUrl').set('preset:' + preset).then(() => {
+        toast('✅ Аватарка установлена');
+        rCoins();
+    });
 };
 
 window.chCoins = function(op) {
@@ -147,31 +196,15 @@ window.rAbilities = function() {
         const currentVip = getCurrentVipRole(me);
         let h = '<div class="divider">✨ ВОЗМОЖНОСТИ И ТЕМЫ</div>';
         h += '<div class="text-sm" style="margin-bottom:8px;">Что даёт каждая роль + её тема</div>';
-        
         Object.entries(ROLES).forEach(([key, r]) => {
             const isCurrent = currentVip === key;
             const info = ROLE_ABILITIES[key];
             const theme = ROLE_THEMES[key];
             if (!info || !theme) return;
-            
             h += `<div class="card${isCurrent ? ' card-glow' : ''}" style="margin-bottom:12px;">`;
             h += `<div class="theme-preview ${theme.cls}"><div class="theme-preview-label"><span class="theme-preview-swatch" style="background:rgba(255,255,255,0.6);"></span>${theme.label}</div><div class="theme-preview-desc">${theme.desc}</div></div>`;
             h += `<div class="row-between" style="margin-bottom:8px;"><div class="row" style="align-items:center;"><div>${r.img ? `<img src="${r.img}" style="width:48px;height:48px;image-rendering:pixelated;" onerror="this.outerHTML='<span style=\\'font-size:36px;\\'>${r.emoji}</span>'">` : `<span style="font-size:36px;">${r.emoji}</span>`}</div><div><div class="text-bold">${r.name}</div><div class="text-sm">${info.subtitle}</div></div></div>${isCurrent ? '<span class="badge badge-admin">АКТИВНА</span>' : ''}</div>`;
             h += `<div>${info.features.map(f => `<div class="ability-item"><div class="ability-icon">${f.icon}</div><div><div class="ability-name">${f.name}</div><div class="ability-desc">${f.desc}</div></div></div>`).join('')}</div>`;
-            
-            // 🟢 ДОБАВЛЯЕМ РЕАЛЬНЫЕ КНОПКИ ДЛЯ ВЫСОКИХ РОЛЕЙ
-            if (key === 'gertsog' || key === 'knyaz') {
-                h += `<div class="row-wrap" style="margin-top:10px; justify-content:center;">
-                    <button class="btn-sm btn-red" onclick="switchTab('mod')">🔨 Модерация</button>
-                    <button class="btn-sm btn-blue" onclick="switchTab('audit')">📋 Аудит</button>
-                    <button class="btn-sm btn-purple" onclick="switchTab('requests')">📋 Заявки</button>
-                </div>`;
-            } else if (key === 'prints' || key === 'titan') {
-                h += `<div class="row-wrap" style="margin-top:10px; justify-content:center;">
-                    <button class="btn-sm btn-red" onclick="switchTab('mod')">🔨 Мут (тест)</button>
-                </div>`;
-            }
-            
             h += `</div>`;
         });
         $('feedContainer').innerHTML = h;

@@ -42,7 +42,8 @@ window.IMG = {
     mob3: 'mob-sheep.avif',
     mob4: '90360fa82ce7e8051c4e9daa8cb4574a.jpg',
     mob5: '1585182676_552px-strider.png',
-    mob6: '61390fbf6973b0fe18e0abd46b1c756e.png'
+    mob6: '61390fbf6973b0fe18e0abd46b1c756e.png',
+    gold_cat: 'gold_cat.png'
 };
 
 window.ROLES = {
