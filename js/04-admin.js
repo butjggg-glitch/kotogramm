@@ -1,9 +1,9 @@
 // ============================================================
-// 04-admin.js — МЕГА-АДМИН-ПАНЕЛЬ (60+ функций)
+// 04-admin.js — Мега-Админ-Панель (60+ функций)
 // ============================================================
 
 window.rAdminPanel = function() {
-    if (!currentUser || currentUser.role !== 'admin') {
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'owner')) {
         $('feedContainer').innerHTML = '<div class="empty-state">⛔ Только для админа</div>';
         return;
     }
@@ -17,7 +17,7 @@ window.rAdminPanel = function() {
     let h = '<div class="divider">⚙️ МЕГА-АДМИНКА</div>';
     h += `<div class="card" style="background:linear-gradient(135deg,#4f46e5,#7c3aed); color:white; text-align:center;"><div style="font-size:36px;">👑</div><div style="font-weight:900; font-size:18px; margin-top:4px;">Админ: ${esc(currentUser.username)}</div><div style="font-size:12px; opacity:0.9; margin-top:4px;">60+ функций управления</div></div>`;
 
-    // 1. ЭКОНОМИКА (Койны и Токены)
+    // 1. ЭКОНОМИКА
     h += '<div class="admin-section">💰 ЭКОНОМИКА</div><div class="admin-grid">';
     h += `<div class="admin-action" onclick="window.admCoins('add')"><div class="admin-action-icon">➕</div><div class="admin-action-name">Выдать Койны</div></div>`;
     h += `<div class="admin-action" onclick="window.admCoins('remove')"><div class="admin-action-icon">➖</div><div class="admin-action-name">Списать Койны</div></div>`;
@@ -30,7 +30,7 @@ window.rAdminPanel = function() {
     h += '</div>';
 
     // 2. РОЛИ И СТАТУСЫ
-    h += '<div class="admin-section">🎭 РОЛИ</div><div class="admin-grid">';
+    h += '<div class="admin-section">🎭 РОЛИ И СТАТУСЫ</div><div class="admin-grid">';
     h += `<div class="admin-action" onclick="window.admRole('give')"><div class="admin-action-icon">👑</div><div class="admin-action-name">Выдать Роль</div></div>`;
     h += `<div class="admin-action" onclick="window.admRole('take')"><div class="admin-action-icon">🗑️</div><div class="admin-action-name">Снять Роль</div></div>`;
     h += `<div class="admin-action" onclick="window.admRole('giveAll')"><div class="admin-action-icon">🎁</div><div class="admin-action-name">Всем Роль</div></div>`;
@@ -87,7 +87,7 @@ window.rAdminPanel = function() {
     h += `<div class="admin-action" onclick="window.admClear('all')"><div class="admin-action-icon">🔥</div><div class="admin-action-name">Сброс ВСЕГО</div></div>`;
     h += '</div>';
 
-    // 9. ПРОЧЕЕ И СТАТИСТИКА
+    // 9. ПРОЧЕЕ И СТАТИСТИКА (Добавил Штраф шахте)
     h += '<div class="admin-section">⚙️ ПРОЧЕЕ</div><div class="admin-grid">';
     h += `<div class="admin-action" onclick="window.admWipe('run')"><div class="admin-action-icon">🚨</div><div class="admin-action-name">Запустить Вайп</div></div>`;
     h += `<div class="admin-action" onclick="window.admWipe('reset')"><div class="admin-action-icon">🔄</div><div class="admin-action-name">Сброс Вайпов</div></div>`;
@@ -95,6 +95,8 @@ window.rAdminPanel = function() {
     h += `<div class="admin-action" onclick="window.admView('suspicious')"><div class="admin-action-icon">🚨</div><div class="admin-action-name">Античит</div></div>`;
     h += `<div class="admin-action" onclick="window.admView('audit')"><div class="admin-action-icon">📋</div><div class="admin-action-name">Аудит</div></div>`;
     h += `<div class="admin-action" onclick="window.admPwdReset()"><div class="admin-action-icon">🔐</div><div class="admin-action-name">Сброс Пароля</div></div>`;
+    h += `<div class="admin-action" onclick="window.admNickAnim()"><div class="admin-action-icon">✨</div><div class="admin-action-name">Анимация Ника</div></div>`;
+    h += `<div class="admin-action" onclick="window.admMinePenalty()" style="border-color:#ff5252;"><div class="admin-action-icon">⚠️</div><div class="admin-action-name">Штраф Шахте</div></div>`;
     h += '</div>';
 
     h += '<div class="admin-section">📊 СТАТИСТИКА СЕРВЕРА</div>';
@@ -222,7 +224,7 @@ window.admBan = function(op) {
         db.ref('users').once('value').then(s => {
             const u = s.val() || {};
             const updates = {};
-            Object.entries(u).forEach(([n, x]) => { if (x.role !== 'admin' && n !== 'Филипп') updates['bans/' + n] = { until: 'forever' }; });
+            Object.entries(u).forEach(([n, x]) => { if (x.role !== 'admin' && x.role !== 'owner' && n !== 'Филипп') updates['bans/' + n] = { until: 'forever' }; });
             db.ref().update(updates).then(() => toast('🚨 Все забанены'));
         });
         return;
@@ -246,7 +248,7 @@ window.admMute = function(op) {
             const u = s.val() || {};
             const updates = {};
             const until = Date.now() + 60 * 60000;
-            Object.entries(u).forEach(([n, x]) => { if (x.role !== 'admin' && n !== 'Филипп') updates['mutes/' + n] = { until }; });
+            Object.entries(u).forEach(([n, x]) => { if (x.role !== 'admin' && x.role !== 'owner' && n !== 'Филипп') updates['mutes/' + n] = { until }; });
             db.ref().update(updates).then(() => toast('🔇 Все замучены на 1 час'));
         });
         return;
@@ -328,6 +330,27 @@ window.admPwdReset = function() {
     db.ref('users/' + target + '/password').set(newPwd).then(() => {
         toast(`✅ Пароль ${target} изменён на ${newPwd}`);
         addAuditLog('admin_pwd_reset', target, 0);
+    });
+};
+
+window.admNickAnim = function() {
+    const target = prompt('Ник игрока:');
+    if (!target) return;
+    const anim = prompt('Анимация (fire, water, lightning, rainbow):');
+    if (!anim) return;
+    db.ref('users/' + target + '/nickAnim').set(anim.toLowerCase()).then(() => {
+        toast(`✅ Игроку ${target} выдана анимация ${anim}`);
+        addAuditLog('admin_nick_anim', target, 0);
+    });
+};
+
+window.admMinePenalty = function() {
+    const penalty = prompt('На сколько % снизить дроп в шахте? (от 0 до 100)');
+    if (penalty === null) return;
+    const val = Math.min(100, Math.max(0, parseInt(penalty) || 0));
+    db.ref('config/minePenalty').set(val).then(() => {
+        toast(`✅ Штраф для шахты: ${val}%`);
+        addAuditLog('admin_mine_penalty', 'all', val);
     });
 };
 

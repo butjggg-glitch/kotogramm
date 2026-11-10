@@ -1,36 +1,74 @@
 // ============================================================
 // 09-mod-audit.js — Модерация, Роли-Админ, Заявки, Античит, Аудит
-// ВАЖНО: автобаны ОТКЛЮЧЕНЫ. Банит только Филипп руками.
+// ВАЖНО: Автобаны ОТКЛЮЧЕНЫ. Банит только Филипп руками.
 // ============================================================
 
 // ============ 🛡️ МОДЕРАЦИЯ ============
 window.rModPanel = function() {
-    if (currentUser.role!=='admin') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Доступ запрещён</div>'; return; }
-    if (!isMasterKeyValid) {
+    if (!currentUser) return;
+    const myVip = getCurrentVipRole(currentUser);
+    const isHighRank = myVip && (ROLES[myVip].level >= 10); // Принц(10), Князь(11), Герцог(12)
+    const isStaff = currentUser.role === 'admin' || currentUser.role === 'owner';
+    const isOwner = currentUser.username === 'Филипп' || currentUser.role === 'owner';
+
+    // 🟢 ПРИНЦ, КНЯЗЬ, ГЕРЦОГ: только мут без ключа
+    if (isHighRank && !isStaff && !isOwner) {
+        let h = '<div class="divider">🛡️ МОДЕРАЦИЯ (Высшая знать)</div>';
+        h += `<div class="card"><div class="text-sm" style="margin-bottom:8px;">Тебе доступно только замутить игрока. Выбери его из списка:</div><div class="row-wrap" id="muteList"></div></div>`;
+        $('feedContainer').innerHTML = h;
+        
+        db.ref('users').once('value').then(s => {
+            const users = s.val() || {};
+            const list = document.getElementById('muteList');
+            let buttons = '';
+            Object.keys(users).forEach(k => {
+                if (k === currentUser.username) return;
+                buttons += `<button class="btn-sm btn-orange" onclick="window.muteUser('${ea(k)}')" style="margin:4px;">🔇 ${esc(k)}</button>`;
+            });
+            if (list) list.innerHTML = buttons;
+        });
+        return;
+    }
+
+    // 🟢 АДМИН / ВЛАДЕЛЕЦ: полный доступ (но без мастер-ключа, если это Владелец)
+    if (!isStaff && !isOwner) { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Доступ запрещён</div>'; return; }
+
+    if (!isMasterKeyValid && !isOwner) {
         let h = '<div class="divider">🛡️ Модерация</div>';
         h += `<div class="card"><span class="text-bold">🔑 Настройка</span><p class="text-sm">Введите мастер-ключ один раз.</p><input type="password" id="masterKeySetup" class="input-sm" placeholder="K0t0gr@mM@sterKey2024!" style="margin-top:6px;"><button class="btn-sm btn-purple" onclick="window.saveMasterKey()" style="margin-top:6px;">Сохранить</button></div>`;
         $('feedContainer').innerHTML = h;
         return;
     }
+
     db.ref('users').once('value').then(s => {
         const users = s.val()||{};
         let h = '<div class="divider">🛡️ Модерация</div>';
         Object.keys(users).forEach(k => {
+            if (k === currentUser.username) return;
             h+=`<div class="card" style="margin-bottom:6px;"><div class="row-between"><span class="text-bold">${esc(k)}</span><div class="row-wrap">`;
-            h+=`<button class="btn-sm btn-red" onclick="window.banUser('${ea(k)}')">🔨 Бан</button>`;
             h+=`<button class="btn-sm btn-orange" onclick="window.muteUser('${ea(k)}')">🔇 Мут</button>`;
-            h+=`<button class="btn-sm btn-green" onclick="window.unbanUser('${ea(k)}')">🔓 Разбан</button>`;
-            h+=`<button class="btn-sm btn-purple" onclick="window.loginAsUser('${ea(k)}')">👤 Войти как</button>`;
-            h+=`<button class="btn-sm btn-orange" onclick="window.setRole('${ea(k)}', 'admin')">👑 Админ</button>`;
-            h+=`<button class="btn-sm btn-purple" onclick="window.setRole('${ea(k)}', 'tester')">🔬 Тестер</button>`;
-            h+=`<button class="btn-sm" style="background:var(--text2);color:white;" onclick="window.setRole('${ea(k)}', 'user')">👤 Юзер</button>`;
+            
+            // Только Владелец или Админ могут банить
+            if (isOwner || currentUser.role === 'admin') {
+                h+=`<button class="btn-sm btn-red" onclick="window.banUser('${ea(k)}')">🔨 Бан</button>`;
+                h+=`<button class="btn-sm btn-green" onclick="window.unbanUser('${ea(k)}')">🔓 Разбан</button>`;
+            }
+            
+            // Только Владелец может менять роли
+            if (isOwner) {
+                h+=`<button class="btn-sm btn-purple" onclick="window.setRole('${ea(k)}', 'admin')">👑 Админ</button>`;
+                h+=`<button class="btn-sm btn-purple" onclick="window.setRole('${ea(k)}', 'tester')">🔬 Тестер</button>`;
+                h+=`<button class="btn-sm" style="background:var(--text2);color:white;" onclick="window.setRole('${ea(k)}', 'user')">👤 Юзер</button>`;
+            }
             h+=`</div></div></div>`;
         });
         $('feedContainer').innerHTML = h;
     });
 };
 
+// 🟢 Функции бана/мута (без ключа для знати)
 window.banUser = function(username) {
+    if (currentUser.role !== 'admin' && currentUser.role !== 'owner' && currentUser.username !== 'Филипп') return toast('⛔ Нет прав');
     const duration = prompt('Минут, 0 = навсегда:');
     if (duration===null) return;
     const reason = prompt('Причина бана:', 'Нарушение правил');
@@ -42,6 +80,12 @@ window.banUser = function(username) {
 };
 
 window.muteUser = function(username) {
+    const myVip = getCurrentVipRole(currentUser);
+    const isHighRank = myVip && (ROLES[myVip].level >= 10);
+    const isStaff = currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.username === 'Филипп';
+    
+    if (!isHighRank && !isStaff) return toast('⛔ Нет прав на мут');
+    
     const duration = prompt('Минут мута:');
     if (!duration) return;
     db.ref('mutes/'+username).set({ until: Date.now()+parseInt(duration)*60000 });
@@ -49,21 +93,25 @@ window.muteUser = function(username) {
     toast('🔇 '+username+' замьючен');
 };
 
-window.unbanUser = function(username) { db.ref('bans/' + username).remove().then(() => { addAuditLog('unban', username, 0); toast('🔓 разбанен'); }); };
+window.unbanUser = function(username) { 
+    if (currentUser.role !== 'admin' && currentUser.role !== 'owner' && currentUser.username !== 'Филипп') return toast('⛔ Нет прав');
+    db.ref('bans/' + username).remove().then(() => { addAuditLog('unban', username, 0); toast('🔓 разбанен'); }); 
+};
 
 window.setRole = function(username, role) {
+    if (currentUser.username !== 'Филипп' && currentUser.role !== 'owner') return toast('⛔ Только Владелец');
     if (!isMasterKeyValid) return toast('Ключ не задан');
     db.ref('users/' + username + '/role').set(role).then(() => { toast(`✅ ${username} теперь ${role}`); rModPanel(); });
 };
 
 window.loginAsUser = function(username) {
-    if (currentUser.role !== 'admin') return;
+    if (currentUser.role !== 'admin' && currentUser.username !== 'Филипп') return;
     db.ref('users/' + username).once('value').then(snap => { const userData = snap.val(); if (!userData) return; login(username, userData.password, true); toast(`👤 Вошли как ${username}`); });
 };
 
-// ============ 👑 УПРАВЛЕНИЕ РОЛЯМИ ============
+// ============ 👑 УПРАВЛЕНИЕ РОЛЯМИ (Только Владелец) ============
 window.rRoleManager = function() {
-    if (currentUser.role !== 'admin') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Только для админа</div>'; return; }
+    if (currentUser.username !== 'Филипп' && currentUser.role !== 'owner') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Только для Владельца</div>'; return; }
     db.ref('users').once('value').then(s => {
         const users = s.val() || {};
         let h = '<div class="divider">👑 УПРАВЛЕНИЕ РОЛЯМИ</div>';
@@ -108,7 +156,7 @@ window.removePlayerRole = function(username) {
 
 // ============ 📋 ЗАЯВКИ ============
 window.rRequests = function() {
-    if (currentUser.role !== 'admin') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Только для админа</div>'; return; }
+    if (currentUser.role !== 'admin' && currentUser.role !== 'owner' && currentUser.username !== 'Филипп') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Только для админа</div>'; return; }
     db.ref('tokenRequests').once('value').then(s => {
         const all = s.val() ? Object.values(s.val()) : [];
         const pending = all.filter(r => r.status === 'pending');
@@ -140,7 +188,7 @@ window.approveReq = function(id, type) {
             db.ref('users/' + r.username + '/tokens').once('value').then(ts => {
                 const cur = ts.val() || 0;
                 const newT = (cur === Infinity || cur === "Infinity") ? cur : cur + (r.tokens || r.amount * 20);
-                db.ref('users/' + r.username + '/tokens').set(newT).then(() => { db.ref('tokenRequests/' + id + '/status').set('approved'); addAuditLog('admin_grant_tokens', r.username, r.tokens || r.amount * 10); toast(`✅ ${r.tokens}💎 выдано игроку ${r.username}`); rRequests(); });
+                db.ref('users/' + r.username + '/tokens').set(newT).then(() => { db.ref('tokenRequests/' + id + '/status').set('approved'); addAuditLog('admin_grant_tokens', r.username, r.tokens || r.amount * 20); toast(`✅ ${r.tokens}💎 выдано игроку ${r.username}`); rRequests(); });
             });
         } else if (type === 'withdraw') {
             db.ref('users/' + r.username + '/tokens').once('value').then(ts => {
@@ -162,7 +210,6 @@ window.approveReq = function(id, type) {
             db.ref('tokenRequests/' + id + '/status').set('approved');
             toast(`✅ Ник изменён (вручную): ${r.username} → ${r.newNick}`);
         } else if (type === 'promo_own') {
-            // Сохраняем промокод в базу, чтобы он заработал
             db.ref('customPromos/' + r.promoCode).set({ reward: 100, creator: r.username }).then(() => {
                 db.ref('tokenRequests/' + id + '/status').set('approved');
                 toast(`✅ Промокод ${r.promoCode} одобрен и добавлен в систему!`);
@@ -180,10 +227,9 @@ window.rejectReq = function(id) {
 
 // ============ 🤖 ИИ-АНТИЧИТ (ПАНЕЛЬ) ============
 window.rAiAnticheat = function() {
-    if (currentUser.role !== 'admin') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Только для админа</div>'; return; }
+    if (currentUser.role !== 'admin' && currentUser.role !== 'owner' && currentUser.username !== 'Филипп') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Только для админа</div>'; return; }
     let h = '<div class="divider">🤖 ИИ-АНТИЧИТ</div>';
     h += '<div class="text-sm" style="margin-bottom:8px;">⚠️ Автобан ОТКЛЮЧЁН. ИИ только записывает подозрительное в лог. Банит Филипп руками.</div>';
-    h += '<div class="text-sm" style="margin-bottom:8px;">Отслеживает: бесконечность, скачок койнов > 100 000 за 10 сек, скачок токенов > 100 за 10 сек (кроме легального обмена).</div>';
     h += `<div class="anticheat-stat"><div><div class="num" style="color:#4caf50;">${Object.keys(aiLastBalances).length}</div><div class="lbl">👥 Отслеживается</div></div><div><div class="num" style="color:#ff9800;">10 сек</div><div class="lbl">⏱️ Интервал</div></div><div><div class="num" style="color:#c62828;">Только лог</div><div class="lbl">🚨 Режим</div></div></div>`;
     h += '<div class="divider">📊 Последние балансы</div>';
     const entries = Object.entries(aiLastBalances).sort((a, b) => (b[1].coins || 0) - (a[1].coins || 0));
@@ -198,7 +244,7 @@ window.rAiAnticheat = function() {
 
 // ============ 🚨 АНТИЧИТ (только показывает, НЕ банит) ============
 window.rSuspicious = function() {
-    if (currentUser.role !== 'admin') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Доступ запрещён</div>'; return; }
+    if (currentUser.role !== 'admin' && currentUser.role !== 'owner' && currentUser.username !== 'Филипп') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Доступ запрещён</div>'; return; }
     let h = '<div class="divider">🚨 АНТИЧИТ</div>';
     h += '<div class="text-sm" style="margin-bottom:8px;">⚠️ Автобан ОТКЛЮЧЁН. Банит только Филипп руками через кнопку в модерации.</div>';
     db.ref('auditLog').orderByChild('time').limitToLast(300).once('value').then(logSnap => {
@@ -215,9 +261,6 @@ window.rSuspicious = function() {
             if (recent.length >= 10) suspicious.push({ user, type: '🟡 МНОГО ОПЕРАЦИЙ', detail: `${recent.length} за 5 мин`, level: 'yellow', time: Date.now() });
         });
 
-        // ⚠️ АВТОБАН ОТКЛЮЧЁН — раньше здесь банило, теперь НЕ банит.
-        // Подозрительные только показываются списком ниже. Банит Филипп руками.
-
         const redCount = suspicious.filter(s => s.level === 'red').length;
         const yellowCount = suspicious.filter(s => s.level === 'yellow').length;
         h += `<div class="anticheat-stat"><div><div class="num" style="color:#c62828;">${redCount}</div><div class="lbl">🔴 Критичных</div></div><div><div class="num" style="color:#ff9800;">${yellowCount}</div><div class="lbl">🟡 Подозрительных</div></div><div><div class="num" style="color:#4caf50;">${logs.length}</div><div class="lbl">📋 Всего логов</div></div></div>`;
@@ -231,7 +274,7 @@ window.rSuspicious = function() {
     });
 };
 
-// ============ 🔍 АУДИТ ============
+// ============ 🔍 АУДИТ (Доступен Принцу+) ============
 window.getAuditBadge = function(action) {
     const map = { 'addCoins': { cls: 'audit-addcoins', label: '➕ КОЙНЫ' }, 'removeCoins': { cls: 'audit-removecoins', label: '➖ КОЙНЫ' }, 'wheel': { cls: 'audit-wheel', label: '🎰 КОЛЕСО' }, 'buy': { cls: 'audit-buy', label: '🛒 ПОКУПКА' }, 'role_change': { cls: 'audit-role_change', label: '👑 РОЛЬ' }, 'ban': { cls: 'audit-ban', label: '🔨 БАН' }, 'mute': { cls: 'audit-mute', label: '🔇 МУТ' }, 'unban': { cls: 'audit-role_change', label: '🔓 РАЗБАН' }, 'promo': { cls: 'audit-addcoins', label: '🎁 ПРОМО' }, 'register': { cls: 'audit-role_change', label: '📝 РЕГ' }, 'transfer_tokens': { cls: 'audit-token', label: '💎 ПЕРЕВОД' }, 'transfer_coins': { cls: 'audit-token', label: '🐾 ПЕРЕВОД' }, 'transfer_cases': { cls: 'audit-token', label: '🎁 ПЕРЕВОД' }, 'admin_grant_tokens': { cls: 'audit-token', label: '💎 ВЫДАЧА' }, 'admin_remove_tokens': { cls: 'audit-token', label: '💎 СПИСАНИЕ' }, 'withdraw_tokens': { cls: 'audit-token', label: '💸 ВЫВОД' }, 'broadcast': { cls: 'audit-role_change', label: '📢 BROADCAST' }, 'case_open': { cls: 'audit-buy', label: '🎁 КЕЙС' }, 'token_shop_buy': { cls: 'audit-buy', label: '🛍️ ТОКЕН-ШОП' }, 'quest_reward': { cls: 'audit-addcoins', label: '🎯 КВЕСТ' }, 'daily_bonus': { cls: 'audit-addcoins', label: '🎁 БОНУС' }, 'exchange': { cls: 'audit-token', label: '🔄 ОБМЕН' }, 'slot_bet': { cls: 'audit-wheel', label: '🎰 СТАВКА' }, 'slot_win': { cls: 'audit-addcoins', label: '🎰 ВЫИГРЫШ' }, 'fishing_cast': { cls: 'audit-wheel', label: '🎣 ЗАБРОС' }, 'fishing_catch': { cls: 'audit-addcoins', label: '🐟 УЛОВ' }, 'fishing_fail': { cls: 'audit-default', label: '😢 СОРВАЛАСЬ' }, 'win_top_invest': { cls: 'audit-token', label: '💎 ВКЛАД' }, 'clan_create': { cls: 'audit-role_change', label: '🏰 КЛАН' }, 'clan_invest': { cls: 'audit-token', label: '🏰 ВКЛАД' }, 'bj_bet': { cls: 'audit-wheel', label: '🃏 СТАВКА' }, 'bj_double': { cls: 'audit-wheel', label: '🃏 ×2' }, 'bj_win': { cls: 'audit-addcoins', label: '🃏 ПОБЕДА' }, 'bj_bj': { cls: 'audit-addcoins', label: '🃏 БЛЭКДЖЕК' }, 'bj_lose': { cls: 'audit-removecoins', label: '🃏 ПРОИГРЫШ' }, 'bj_push': { cls: 'audit-default', label: '🃏 НИЧЬЯ' }, 'stickman_win': { cls: 'audit-addcoins', label: '🥊 ПОБЕДА' }, 'stickman_lose': { cls: 'audit-removecoins', label: '🥊 ПРОИГРЫШ' } };
     return map[action] || { cls: 'audit-default', label: action };
@@ -242,7 +285,12 @@ let auditFilter = 'all'; let auditSearch = ''; let auditPage = 0; const AUDIT_PE
 window.timeAgo = function(timestamp) { if (!timestamp) return '--'; const diff = Date.now() - timestamp; if (diff < 60000) return 'только что'; if (diff < 3600000) return Math.floor(diff / 60000) + ' мин'; if (diff < 86400000) return Math.floor(diff / 3600000) + ' ч'; return Math.floor(diff / 86400000) + ' дн'; };
 
 window.rAudit = function() {
-    if (currentUser.role !== 'admin') { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Доступ запрещён</div>'; return; }
+    const myVip = getCurrentVipRole(currentUser);
+    const isHighRank = myVip && (ROLES[myVip].level >= 10);
+    const isStaff = currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.username === 'Филипп';
+    
+    if (!isStaff && !isHighRank) { $('feedContainer').innerHTML = '<div class="empty-state">⛔ Аудит доступен с Принца+</div>'; return; }
+    
     db.ref('auditLog').orderByChild('time').limitToLast(300).once('value').then(logSnap => {
         const logs = logSnap.val() ? Object.values(logSnap.val()).reverse() : [];
         let h = '<div class="divider">🔍 АУДИТ</div>';

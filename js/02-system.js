@@ -1,5 +1,5 @@
 // ============================================================
-// 02-core.js — Темы, вайп, аудит, сессии, баны, тех. работы
+// 02-system.js — Темы, вайп, аудит, сессии, баны, тех. работы
 // ============================================================
 
 // ============ ТЕМЫ ============
@@ -17,7 +17,7 @@ window.applyTheme = function(themeId) {
 
 window.hasThemeAccess = function(themeId) {
     if (!currentUser) return themeId === 'light' || themeId === 'dark';
-    if (currentUser.role === 'admin') return true;
+    if (currentUser.role === 'admin' || currentUser.role === 'owner') return true;
     const theme = THEMES[themeId];
     if (!theme) return false;
     if (!theme.req) return true;
@@ -48,7 +48,7 @@ window.openThemeModal = function() {
             const tid = card.dataset.theme;
             if (tid === 'custom') {
                 db.ref('users/' + currentUser.username + '/customTheme').once('value').then(s => {
-                    const hasIt = s.val() || currentUser.role === 'admin';
+                    const hasIt = s.val() || currentUser.role === 'admin' || currentUser.role === 'owner';
                     if (!hasIt) { toast('❌ Купи «Свою тему» в Токен-Шопе за 5💎'); return; }
                     applyTheme('custom'); toast('🌈 Своя тема применена!'); openThemeModal();
                 });
@@ -81,9 +81,8 @@ window.runWipe = function(currentWipeCount) {
         const sorted = Object.entries(users).filter(([name, u]) => name !== 'Филипп' && u.coins !== Infinity && u.coins !== "Infinity").sort((a, b) => (b[1].coins || 0) - (a[1].coins || 0));
         const investSorted = Object.entries(users).filter(([name, u]) => name !== 'Филипп' && (u.wipeInvest || 0) > 0).sort((a, b) => (b[1].wipeInvest || 0) - (a[1].wipeInvest || 0));
         Object.entries(users).forEach(([name, u]) => {
-            if (name !== 'Филипп' && u.role !== 'admin') {
+            if (name !== 'Филипп' && u.role !== 'admin' && u.role !== 'owner') {
                 updates[`users/${name}/coins`] = 500;
-                const curTok = u.tokens === Infinity || u.tokens === "Infinity" ? 0 : (u.tokens || 0);
             }
             updates[`users/${name}/vipRole`] = null;
             updates[`users/${name}/vipExpiresAt`] = null;
@@ -226,7 +225,7 @@ window.listenMaintenance = function() {
             if (maintenanceInterval) { clearInterval(maintenanceInterval); maintenanceInterval = null; }
             return;
         }
-        if (currentUser && currentUser.role === 'admin') {
+        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner')) {
             $('maintenanceOverlay').classList.add('hidden');
             return;
         }

@@ -39,181 +39,198 @@ const RESOURCE_PRICES = {
 
 window.rCraft = function() {
     if (!currentUser) return;
-    db.ref('users/' + currentUser.username).once('value').then(snap => {
-        const userData = snap.val() || {};
-        const inv = userData.inventory || { wood: 0, stone: 0, iron: 0, gold: 0, diamond: 0, items: {} };
-        const items = inv.items || {};
-        const myCoins = userData.coins === Infinity || userData.coins === "Infinity" ? Infinity : (userData.coins || 0);
-        const myPickaxe = inv.equippedPickaxe || 'wood';
-        const pick = PICKAXES[myPickaxe] || PICKAXES.wood;
-        const dur = inv.pickaxeDurability !== undefined ? inv.pickaxeDurability : pick.maxDur;
-        const ench = inv.pickaxeEnchants || { speed: 0, luck: 0 };
+    
+    // 🟢 ЧИТАЕМ ШТРАФ ИЗ БАЗЫ (по умолчанию 0%)
+    db.ref('config/minePenalty').once('value').then(penSnap => {
+        const penalty = penSnap.val() || 0; // 0-100 (процент, на который уменьшается шанс)
+        const penaltyMultiplier = (100 - penalty) / 100; 
 
-        let h = '<div class="divider">⛏️ КОТО-КРАФТ</div>';
-        
-        // 1. ШАХТА
-        h += `<div class="card" style="text-align: center; background: linear-gradient(135deg, #2a2a3a, #1a1a24); color: white;">
-            <div class="text-bold" style="font-size: 18px; margin-bottom: 10px;">🏔️ ШАХТА</div>
-            <div style="display: flex; justify-content: space-around; font-size: 18px; margin-bottom: 10px; flex-wrap: wrap;">
-                <div>🪵 <span id="c_wood">${inv.wood || 0}</span></div>
-                <div>🪨 <span id="c_stone">${inv.stone || 0}</span></div>
-                <div>🔩 <span id="c_iron">${inv.iron || 0}</span></div>
-                <div>🪙 <span id="c_gold">${inv.gold || 0}</span></div>
-                <div>💎 <span id="c_diamond">${inv.diamond || 0}</span></div>
-            </div>
-            <div style="margin-bottom: 10px; text-align: left; padding: 0 10px;">
-                <div class="text-sm">⛏️ Кирка: <b>${pick.name}</b></div>
-                <div class="text-sm">⚡ Скорость: <b>x${pick.speed + ench.speed}</b></div>
-                <div class="text-sm">🍀 Удача: <b>+${pick.luck + ench.luck}%</b></div>
-                <div class="text-sm" style="margin-top:5px;">🛠️ Прочность: <b id="pickDur">${dur}</b> / ${pick.maxDur}</div>
-                <div style="background:#333; height:8px; border-radius:4px; overflow:hidden; margin-top:3px;">
-                    <div id="pickDurBar" style="width:${(dur / pick.maxDur) * 100}%; height:100%; background: #4caf50;"></div>
+        db.ref('users/' + currentUser.username).once('value').then(snap => {
+            const userData = snap.val() || {};
+            const inv = userData.inventory || { wood: 0, stone: 0, iron: 0, gold: 0, diamond: 0, items: {} };
+            const items = inv.items || {};
+            const myCoins = userData.coins === Infinity || userData.coins === "Infinity" ? Infinity : (userData.coins || 0);
+            const myPickaxe = inv.equippedPickaxe || 'wood';
+            const pick = PICKAXES[myPickaxe] || PICKAXES.wood;
+            const dur = inv.pickaxeDurability !== undefined ? inv.pickaxeDurability : pick.maxDur;
+            const ench = inv.pickaxeEnchants || { speed: 0, luck: 0 };
+
+            let h = '<div class="divider">⛏️ КОТО-КРАФТ</div>';
+            
+            // 1. ШАХТА
+            h += `<div class="card" style="text-align: center; background: linear-gradient(135deg, #2a2a3a, #1a1a24); color: white;">
+                <div class="text-bold" style="font-size: 18px; margin-bottom: 10px;">🏔️ ШАХТА</div>
+                ${penalty > 0 ? `<div class="text-sm" style="color:#ff5252; margin-bottom:5px; font-weight:bold;">⚠️ Действует штраф: -${penalty}% к дропу!</div>` : ''}
+                <div style="display: flex; justify-content: space-around; font-size: 18px; margin-bottom: 10px; flex-wrap: wrap;">
+                    <div>🪵 <span id="c_wood">${inv.wood || 0}</span></div>
+                    <div>🪨 <span id="c_stone">${inv.stone || 0}</span></div>
+                    <div>🔩 <span id="c_iron">${inv.iron || 0}</span></div>
+                    <div>🪙 <span id="c_gold">${inv.gold || 0}</span></div>
+                    <div>💎 <span id="c_diamond">${inv.diamond || 0}</span></div>
                 </div>
-            </div>
-            <button class="btn-gold" id="mineBtn" style="width: 100%; padding: 15px; font-size: 18px; border-radius: 12px; margin-bottom: 10px;">⛏️ КОПАТЬ</button>
-            <div class="text-sm" style="color: #ccc;">💰 Твой баланс: <b>${fc(myCoins)}</b> 🐾</div>
-        </div>`;
-
-        // 2. МАГАЗИН КИРОК И РЕСУРСОВ
-        h += '<div class="divider">🏪 МАГАЗИН ШАХТЫ</div>';
-        h += `<div class="card" style="padding: 10px;"><div class="text-bold" style="margin-bottom:5px;">Кирки (покупка за 🐾)</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">`;
-        Object.entries(PICKAXES).forEach(([key, p]) => {
-            const canBuy = myCoins === Infinity || myCoins >= p.price;
-            h += `<div style="background: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px; text-align: center;">
-                <div class="text-bold">${p.name}</div>
-                <div class="text-sm" style="color:#ccc;">Скорость: x${p.speed} | Удача: +${p.luck}%</div>
-                <div class="text-sm" style="color:#ffd700; font-weight:700;">${p.price} 🐾</div>
-                <button class="btn-sm btn-gold" onclick="window.buyPickaxe('${key}')" ${canBuy ? '' : 'disabled'} style="margin-top:5px;">Купить</button>
-            </div>`;
-        });
-        h += `</div></div>`;
-
-        // 3. МАГАЗИН РЕСУРСОВ
-        h += `<div class="card" style="padding: 10px;"><div class="text-bold" style="margin-bottom:5px;">Ресурсы</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">`;
-        Object.entries(RESOURCE_PRICES).forEach(([key, data]) => {
-            h += `<div style="background: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px; text-align: center;">
-                <div class="text-bold">${data.name}</div>
-                <div class="text-sm" style="margin-bottom:5px; color:#ccc;">Купить: ${data.buy}🐾 | Продать: ${data.sell}🐾</div>
-                <div class="row-wrap" style="justify-content:center;">
-                    <input type="number" id="amt_${key}" value="10" min="1" class="input-sm" style="width: 60px; padding: 4px; text-align: center;">
-                    <button class="btn-sm btn-green" onclick="window.buyResource('${key}')" style="padding: 4px 8px;">Купить</button>
-                    <button class="btn-sm btn-orange" onclick="window.sellResource('${key}')" style="padding: 4px 8px;">Продать</button>
+                <div style="margin-bottom: 10px; text-align: left; padding: 0 10px;">
+                    <div class="text-sm">⛏️ Кирка: <b>${pick.name}</b></div>
+                    <div class="text-sm">⚡ Скорость: <b>x${pick.speed + ench.speed}</b></div>
+                    <div class="text-sm">🍀 Удача: <b>+${pick.luck + ench.luck}%</b></div>
+                    <div class="text-sm" style="margin-top:5px;">🛠️ Прочность: <b id="pickDur">${dur}</b> / ${pick.maxDur}</div>
+                    <div style="background:#333; height:8px; border-radius:4px; overflow:hidden; margin-top:3px;">
+                        <div id="pickDurBar" style="width:${(dur / pick.maxDur) * 100}%; height:100%; background: #4caf50;"></div>
+                    </div>
                 </div>
+                <button class="btn-gold" id="mineBtn" style="width: 100%; padding: 15px; font-size: 18px; border-radius: 12px; margin-bottom: 10px;">⛏️ КОПАТЬ</button>
+                <div class="text-sm" style="color: #ccc;">💰 Твой баланс: <b>${fc(myCoins)}</b> 🐾</div>
             </div>`;
-        });
-        h += `</div></div>`;
 
-        // 4. ЗАЧАРОВАНИЯ
-        h += '<div class="divider">✨ ЗАЧАРОВАНИЯ КИРКИ</div>';
-        h += `<div class="card" style="padding: 10px; text-align: center;">
-            <div class="text-sm" style="margin-bottom:5px;">Твои бонусы: ⚡ +${ench.speed} скорости, 🍀 +${ench.luck}% удачи</div>
-            <div class="row-wrap" style="justify-content:center; gap: 5px;">
-                <button class="btn-sm btn-blue" onclick="window.randomEnchant()">🎲 Случайное (500🐾)</button>
-                <button class="btn-sm btn-purple" onclick="window.buyEnchant('speed')">⚡ Скорость +1 (2000🐾)</button>
-                <button class="btn-sm btn-purple" onclick="window.buyEnchant('luck')">🍀 Удача +5% (2000🐾)</button>
-            </div>
-        </div>`;
+            // 2. МАГАЗИН КИРОК И РЕСУРСОВ
+            h += '<div class="divider">🏪 МАГАЗИН ШАХТЫ</div>';
+            h += `<div class="card" style="padding: 10px;"><div class="text-bold" style="margin-bottom:5px;">Кирки (покупка за 🐾)</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">`;
+            Object.entries(PICKAXES).forEach(([key, p]) => {
+                const canBuy = myCoins === Infinity || myCoins >= p.price;
+                h += `<div style="background: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px; text-align: center;">
+                    <div class="text-bold">${p.name}</div>
+                    <div class="text-sm" style="color:#ccc;">Скорость: x${p.speed} | Удача: +${p.luck}%</div>
+                    <div class="text-sm" style="color:#ffd700; font-weight:700;">${p.price} 🐾</div>
+                    <button class="btn-sm btn-gold" onclick="window.buyPickaxe('${key}')" ${canBuy ? '' : 'disabled'} style="margin-top:5px;">Купить</button>
+                </div>`;
+            });
+            h += `</div></div>`;
 
-        // 5. ВЕРСТАК
-        h += '<div class="divider">🔨 ВЕРСТАК</div>';
-        CRAFT_RECIPES.forEach(r => {
-            const canCraft = Object.entries(r.res).every(([res, amt]) => (inv[res] || 0) >= amt);
-            h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <div><div class="text-bold">${r.name}</div><div class="text-sm">Нужно: ${Object.entries(r.res).map(([k,v]) => `${v} ${k}`).join(', ')}</div></div>
-                <button class="btn-sm ${canCraft ? 'btn-green' : ''}" onclick="window.craftItem('${r.id}')" ${canCraft ? '' : 'disabled'}>Скрафтить</button>
-            </div>`;
-        });
-
-        // 6. ИНВЕНТАРЬ
-        h += '<div class="divider">🎒 ТВОИ ПРЕДМЕТЫ</div>';
-        let hasItems = false;
-        Object.entries(items).forEach(([itemId, count]) => {
-            if (count > 0) {
-                hasItems = true;
-                const recipe = CRAFT_RECIPES.find(x => x.id === itemId);
-                if (!recipe) return;
-                h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <div>${recipe.name} (${count} шт.)</div>
-                    <div>
-                        <button class="btn-sm btn-blue" onclick="window.equipItem('${itemId}')" style="margin-right:4px;">Надеть</button>
-                        <button class="btn-sm btn-orange" onclick="window.sellItem('${itemId}')">Продать</button>
+            // 3. МАГАЗИН РЕСУРСОВ
+            h += `<div class="card" style="padding: 10px;"><div class="text-bold" style="margin-bottom:5px;">Ресурсы</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">`;
+            Object.entries(RESOURCE_PRICES).forEach(([key, data]) => {
+                h += `<div style="background: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px; text-align: center;">
+                    <div class="text-bold">${data.name}</div>
+                    <div class="text-sm" style="margin-bottom:5px; color:#ccc;">Купить: ${data.buy}🐾 | Продать: ${data.sell}🐾</div>
+                    <div class="row-wrap" style="justify-content:center;">
+                        <input type="number" id="amt_${key}" value="10" min="1" class="input-sm" style="width: 60px; padding: 4px; text-align: center;">
+                        <button class="btn-sm btn-green" onclick="window.buyResource('${key}')" style="padding: 4px 8px;">Купить</button>
+                        <button class="btn-sm btn-orange" onclick="window.sellResource('${key}')" style="padding: 4px 8px;">Продать</button>
                     </div>
                 </div>`;
-            }
-        });
-        if (!hasItems) h += '<div class="text-sm">У тебя пока нет предметов. Скрафти что-нибудь!</div>';
-
-        // 7. АРЕНА PVP
-        h += '<div class="divider" style="margin-top:20px;">⚔️ АРЕНА СМЕРТИ</div>';
-        h += `<div class="card" style="background: linear-gradient(135deg, #1a1a24, #2a2a3a); color: white; text-align: center; padding: 20px; border: 2px solid #ff5252;">
-            <div class="text-sm">Победитель забирает ресурсы проигравшего!</div>
-            <button class="btn-gold" id="pvpQueueBtn" style="margin-top:10px; padding:10px 20px; font-size:16px;">⚔️ КЛАССИЧЕСКИЙ PVP</button>
-            <button class="btn-gold" id="kitPvpBtn" style="margin-top:10px; padding:10px 20px; font-size:16px; background: linear-gradient(135deg, #00bcd4, #006064);">🐋 КИТ ПВП</button>
-            <div id="pvpStatus" style="margin-top:10px; font-weight:900; font-size:16px;"></div>
-        </div>`;
-
-        $('feedContainer').innerHTML = h;
-
-        // Логика кнопок
-        let lastMineTime = 0;
-        $('mineBtn').onclick = () => {
-            const now = Date.now();
-            if (now - lastMineTime < 100) return; // Античит мягче
-            lastMineTime = now;
-
-            if (dur <= 0) { toast('💥 Кирка сломана! Купи новую в магазине.'); return; }
-
-            const rand = Math.random() * 100;
-            let resource = 'wood';
-            if (rand > 70 && rand <= 90) resource = 'stone';
-            if (rand > 90 && rand <= 97) resource = 'iron';
-            if (rand > 97 && rand <= 99.5) resource = 'gold';
-            if (rand > 99.5) resource = 'diamond';
-
-            const luckBonus = pick.luck + ench.luck;
-            if (Math.random() * 100 < luckBonus) {
-                const order = ['wood', 'stone', 'iron', 'gold', 'diamond'];
-                const idx = order.indexOf(resource);
-                if (idx < order.length - 1) resource = order[idx + 1];
-            }
-
-            const updates = {};
-            updates['inventory/' + resource] = (inv[resource] || 0) + 1;
-            updates['inventory/pickaxeDurability'] = dur - 1;
-
-            db.ref('users/' + currentUser.username).update(updates).then(() => {
-                if ($('c_' + resource)) $('c_' + resource).textContent = (parseInt($('c_' + resource).textContent) || 0) + 1;
-                const newDur = dur - 1;
-                if ($('pickDur')) $('pickDur').textContent = newDur;
-                if ($('pickDurBar')) $('pickDurBar').style.width = Math.max(0, (newDur / pick.maxDur) * 100) + '%';
-                toast(`⛏️ Ты добыл 1 ${RESOURCE_PRICES[resource].name}`);
-                inv[resource] = (inv[resource] || 0) + 1;
-                inv.pickaxeDurability = newDur;
             });
-        };
+            h += `</div></div>`;
 
-        $('pvpQueueBtn').onclick = () => {
-            if (inv.equippedWeapon === 'Нет' && inv.equippedArmor === 'Нет') { toast('❌ Надень хотя бы меч или броню!'); return; }
-            $('pvpQueueBtn').disabled = true; $('pvpQueueBtn').textContent = '⏳ Ждем соперника...'; $('pvpStatus').innerHTML = 'Ищем второго игрока...';
-            db.ref('pvp_queue/' + currentUser.username).set({ timestamp: Date.now(), hp: 50 + (CRAFT_RECIPES.find(x => x.id === inv.equippedArmor)?.hp || 0), dmg: 5 + (CRAFT_RECIPES.find(x => x.id === inv.equippedWeapon)?.dmg || 0) });
-            let botTimeout = setTimeout(() => {
-                db.ref('pvp_queue').once('value').then(s => {
-                    if (Object.keys(s.val() || {}).length < 2) { db.ref('pvp_queue').off(); db.ref('pvp_queue').remove(); toast('🤖 Соперников нет, бой с Ботом!'); startOnlinePvpFight('🤖 Бот', { hp: 100, dmg: 15 }); }
-                });
-            }, 10000);
-            db.ref('pvp_queue').on('value', snap => {
-                const queue = snap.val() || {}; const players = Object.keys(queue);
-                if (players.length >= 2) {
-                    const opponent = players.find(p => p !== currentUser.username);
-                    if (opponent) { clearTimeout(botTimeout); db.ref('pvp_queue').off(); const oppData = queue[opponent]; db.ref('pvp_queue').remove(); startOnlinePvpFight(opponent, oppData); }
+            // 4. ЗАЧАРОВАНИЯ
+            h += '<div class="divider">✨ ЗАЧАРОВАНИЯ КИРКИ</div>';
+            h += `<div class="card" style="padding: 10px; text-align: center;">
+                <div class="text-sm" style="margin-bottom:5px;">Твои бонусы: ⚡ +${ench.speed} скорости, 🍀 +${ench.luck}% удачи</div>
+                <div class="row-wrap" style="justify-content:center; gap: 5px;">
+                    <button class="btn-sm btn-blue" onclick="window.randomEnchant()">🎲 Случайное (500🐾)</button>
+                    <button class="btn-sm btn-purple" onclick="window.buyEnchant('speed')">⚡ Скорость +1 (2000🐾)</button>
+                    <button class="btn-sm btn-purple" onclick="window.buyEnchant('luck')">🍀 Удача +5% (2000🐾)</button>
+                </div>
+            </div>`;
+
+            // 5. ВЕРСТАК
+            h += '<div class="divider">🔨 ВЕРСТАК</div>';
+            CRAFT_RECIPES.forEach(r => {
+                const canCraft = Object.entries(r.res).every(([res, amt]) => (inv[res] || 0) >= amt);
+                h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <div><div class="text-bold">${r.name}</div><div class="text-sm">Нужно: ${Object.entries(r.res).map(([k,v]) => `${v} ${k}`).join(', ')}</div></div>
+                    <button class="btn-sm ${canCraft ? 'btn-green' : ''}" onclick="window.craftItem('${r.id}')" ${canCraft ? '' : 'disabled'}>Скрафтить</button>
+                </div>`;
+            });
+
+            // 6. ИНВЕНТАРЬ
+            h += '<div class="divider">🎒 ТВОИ ПРЕДМЕТЫ</div>';
+            let hasItems = false;
+            Object.entries(items).forEach(([itemId, count]) => {
+                if (count > 0) {
+                    hasItems = true;
+                    const recipe = CRAFT_RECIPES.find(x => x.id === itemId);
+                    if (!recipe) return;
+                    h += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <div>${recipe.name} (${count} шт.)</div>
+                        <div>
+                            <button class="btn-sm btn-blue" onclick="window.equipItem('${itemId}')" style="margin-right:4px;">Надеть</button>
+                            <button class="btn-sm btn-orange" onclick="window.sellItem('${itemId}')">Продать</button>
+                        </div>
+                    </div>`;
                 }
             });
-        };
-        $('kitPvpBtn').onclick = () => startKitPvp();
+            if (!hasItems) h += '<div class="text-sm">У тебя пока нет предметов. Скрафти что-нибудь!</div>';
+
+            // 7. АРЕНА PVP
+            h += '<div class="divider" style="margin-top:20px;">⚔️ АРЕНА СМЕРТИ</div>';
+            h += `<div class="card" style="background: linear-gradient(135deg, #1a1a24, #2a2a3a); color: white; text-align: center; padding: 20px; border: 2px solid #ff5252;">
+                <div class="text-sm">Победитель забирает ресурсы проигравшего!</div>
+                <button class="btn-gold" id="pvpQueueBtn" style="margin-top:10px; padding:10px 20px; font-size:16px;">⚔️ КЛАССИЧЕСКИЙ PVP</button>
+                <button class="btn-gold" id="kitPvpBtn" style="margin-top:10px; padding:10px 20px; font-size:16px; background: linear-gradient(135deg, #00bcd4, #006064);">🐋 КИТ ПВП</button>
+                <div id="pvpStatus" style="margin-top:10px; font-weight:900; font-size:16px;"></div>
+            </div>`;
+
+            $('feedContainer').innerHTML = h;
+
+            // Логика кнопок
+            let lastMineTime = 0;
+            $('mineBtn').onclick = () => {
+                const now = Date.now();
+                if (now - lastMineTime < 100) return; 
+                lastMineTime = now;
+
+                if (dur <= 0) { toast('💥 Кирка сломана! Купи новую в магазине.'); return; }
+
+                // 🟢 СИЛЬНЫЙ НЕРФ ШАНСОВ (теперь дерево 85%, алмазы 0.1%)
+                const rand = Math.random() * 100;
+                let resource = 'wood';
+                if (rand > 85 && rand <= 93) resource = 'stone';
+                if (rand > 93 && rand <= 97) resource = 'iron';
+                if (rand > 97 && rand <= 99.5) resource = 'gold';
+                if (rand > 99.5) resource = 'diamond';
+
+                // Бонус удачи (с учетом штрафа)
+                const luckBonus = (pick.luck + ench.luck) * penaltyMultiplier;
+                if (Math.random() * 100 < luckBonus) {
+                    const order = ['wood', 'stone', 'iron', 'gold', 'diamond'];
+                    const idx = order.indexOf(resource);
+                    if (idx < order.length - 1) resource = order[idx + 1];
+                }
+
+                // 🟢 ПРИМЕНЯЕМ ШТРАФ (если шанс выпадения < штрафа, ресурс не падает)
+                const dropChance = Math.random() * 100;
+                if (dropChance < penalty) {
+                    toast('⚠️ Штраф шахты: ничего не выпало!');
+                    return;
+                }
+
+                const updates = {};
+                updates['inventory/' + resource] = (inv[resource] || 0) + 1;
+                updates['inventory/pickaxeDurability'] = dur - 1;
+
+                db.ref('users/' + currentUser.username).update(updates).then(() => {
+                    if ($('c_' + resource)) $('c_' + resource).textContent = (parseInt($('c_' + resource).textContent) || 0) + 1;
+                    const newDur = dur - 1;
+                    if ($('pickDur')) $('pickDur').textContent = newDur;
+                    if ($('pickDurBar')) $('pickDurBar').style.width = Math.max(0, (newDur / pick.maxDur) * 100) + '%';
+                    toast(`⛏️ Ты добыл 1 ${RESOURCE_PRICES[resource].name}`);
+                    inv[resource] = (inv[resource] || 0) + 1;
+                    inv.pickaxeDurability = newDur;
+                });
+            };
+
+            $('pvpQueueBtn').onclick = () => {
+                if (inv.equippedWeapon === 'Нет' && inv.equippedArmor === 'Нет') { toast('❌ Надень хотя бы меч или броню!'); return; }
+                $('pvpQueueBtn').disabled = true; $('pvpQueueBtn').textContent = '⏳ Ждем соперника...'; $('pvpStatus').innerHTML = 'Ищем второго игрока...';
+                db.ref('pvp_queue/' + currentUser.username).set({ timestamp: Date.now(), hp: 50 + (CRAFT_RECIPES.find(x => x.id === inv.equippedArmor)?.hp || 0), dmg: 5 + (CRAFT_RECIPES.find(x => x.id === inv.equippedWeapon)?.dmg || 0) });
+                let botTimeout = setTimeout(() => {
+                    db.ref('pvp_queue').once('value').then(s => {
+                        if (Object.keys(s.val() || {}).length < 2) { db.ref('pvp_queue').off(); db.ref('pvp_queue').remove(); toast('🤖 Соперников нет, бой с Ботом!'); startOnlinePvpFight('🤖 Бот', { hp: 100, dmg: 15 }); }
+                    });
+                }, 10000);
+                db.ref('pvp_queue').on('value', snap => {
+                    const queue = snap.val() || {}; const players = Object.keys(queue);
+                    if (players.length >= 2) {
+                        const opponent = players.find(p => p !== currentUser.username);
+                        if (opponent) { clearTimeout(botTimeout); db.ref('pvp_queue').off(); const oppData = queue[opponent]; db.ref('pvp_queue').remove(); startOnlinePvpFight(opponent, oppData); }
+                    }
+                });
+            };
+            $('kitPvpBtn').onclick = () => startKitPvp();
+        });
     });
 };
 
-// 🟢 ФУНКЦИИ МАГАЗИНА И ЗАЧАРОВАНИЙ
+// ФУНКЦИИ МАГАЗИНА И ЗАЧАРОВАНИЙ
 window.buyPickaxe = function(key) {
     const p = PICKAXES[key];
     if (!p) return;
@@ -230,18 +247,13 @@ window.buyPickaxe = function(key) {
 
 window.randomEnchant = function() {
     if (currentUser.coins !== Infinity && currentUser.coins < 500) return toast('❌ Нужно 500🐾');
-    
     db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants').once('value').then(s => {
         const ench = s.val() || { speed: 0, luck: 0 };
         if (ench.luck >= 50 && ench.speed >= 50) return toast('🛑 Достигнут максимум (+50% удачи и +50% скорости)!');
-
         const isSpeed = Math.random() < 0.5;
         const enchKey = isSpeed ? 'speed' : 'luck';
         const amount = isSpeed ? 1 : 5;
-
-        // Проверка лимита
         if (ench[enchKey] + amount > 50) return toast(`🛑 Максимум для этого зачарования — 50!`);
-
         db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants/' + enchKey).transaction(c => (c || 0) + amount).then(() => {
             if (currentUser.coins !== Infinity) db.ref('users/' + currentUser.username + '/coins').set(currentUser.coins - 500);
             toast(`🎲 Выпало: ${isSpeed ? '⚡ Скорость' : '🍀 Удача'} +${amount}!`);
@@ -252,14 +264,10 @@ window.randomEnchant = function() {
 
 window.buyEnchant = function(type) {
     if (currentUser.coins !== Infinity && currentUser.coins < 2000) return toast('❌ Нужно 2000🐾');
-    
     db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants').once('value').then(s => {
         const ench = s.val() || { speed: 0, luck: 0 };
         const amount = type === 'speed' ? 1 : 5;
-
-        // Проверка лимита
         if (ench[type] + amount > 50) return toast(`🛑 Максимум для этого зачарования — 50!`);
-
         db.ref('users/' + currentUser.username + '/inventory/pickaxeEnchants/' + type).transaction(c => (c || 0) + amount).then(() => {
             if (currentUser.coins !== Infinity) db.ref('users/' + currentUser.username + '/coins').set(currentUser.coins - 2000);
             toast(`✅ Куплено: ${type === 'speed' ? '⚡ Скорость' : '🍀 Удача'}!`);
@@ -296,7 +304,6 @@ window.sellResource = function(res) {
     });
 };
 
-// ============ КРАФТ, АУКЦИОН И PVP ============
 window.craftItem = function(itemId) {
     const recipe = CRAFT_RECIPES.find(r => r.id === itemId); if (!recipe) return;
     const userRef = db.ref('users/' + currentUser.username);
